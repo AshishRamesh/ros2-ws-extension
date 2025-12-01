@@ -4,6 +4,7 @@ import { ROS2SidebarProvider } from './views/sidebarProvider';
 import { ColconService } from './services/colconService';
 import { PackageWizard } from './wizards/packageWizard';
 import { NodeWizard } from './wizards/nodeWizard';
+import { BuildWizard } from './wizards/buildWizard';
 
 let outputChannel: vscode.OutputChannel;
 
@@ -37,29 +38,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Build Workspace
 	const buildCmd = vscode.commands.registerCommand('ros2.build', async () => {
-		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-		if (!workspaceFolder) {
-			vscode.window.showErrorMessage('No workspace folder open');
-			return;
-		}
-
-		try {
-			// Get build options from sidebar
-			const options = {
-				symlinkInstall: sidebarProvider.getSymlinkInstall(),
-				packagesSelect: []
-			};
-
-			// Generate .gitignore if enabled
-			if (sidebarProvider.getAddGitignore()) {
-				await colconService.generateGitignore(workspaceFolder.uri.fsPath);
-			}
-
-			await colconService.build(workspaceFolder.uri.fsPath, options);
-			vscode.window.showInformationMessage('Build completed successfully!');
-		} catch (error) {
-			vscode.window.showErrorMessage(`Build failed: ${error}`);
-		}
+		const wizard = new BuildWizard(colconService);
+		await wizard.run();
 	});
 
 	// Clean Build
@@ -95,14 +75,14 @@ export function activate(context: vscode.ExtensionContext) {
 		await wizard.run();
 	});
 
-	// Toggle Symlink Install
-	const toggleSymlinkCmd = vscode.commands.registerCommand('ros2.toggleSymlinkInstall', () => {
-		sidebarProvider.toggleSymlinkInstall();
-	});
-
-	// Toggle Gitignore
-	const toggleGitignoreCmd = vscode.commands.registerCommand('ros2.toggleGitignore', () => {
-		sidebarProvider.toggleGitignore();
+	// Generate .gitignore
+	const generateGitignoreCmd = vscode.commands.registerCommand('ros2.generateGitignore', async () => {
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		if (!workspaceFolder) {
+			vscode.window.showErrorMessage('No workspace folder open');
+			return;
+		}
+		await colconService.generateGitignore(workspaceFolder.uri.fsPath);
 	});
 
 	// Register sidebar provider
@@ -119,8 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
 		openPanelCmd,
 		createPackageCmd,
 		createNodeCmd,
-		toggleSymlinkCmd,
-		toggleGitignoreCmd,
+		generateGitignoreCmd,
 		treeView
 	);
 }

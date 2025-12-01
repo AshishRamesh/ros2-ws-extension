@@ -33,10 +33,10 @@ export class ROS2SidebarProvider implements vscode.TreeDataProvider<ROS2TreeItem
             return Promise.resolve([
                 new ROS2TreeItem(
                     'Build',
-                    undefined,
-                    vscode.TreeItemCollapsibleState.Collapsed,
+                    'ros2.build',
+                    vscode.TreeItemCollapsibleState.None,
                     '🔨',
-                    'build-parent'
+                    'build'
                 ),
                 new ROS2TreeItem(
                     'Clean Build',
@@ -58,56 +58,18 @@ export class ROS2SidebarProvider implements vscode.TreeDataProvider<ROS2TreeItem
                     vscode.TreeItemCollapsibleState.None,
                     '📝',
                     'create-node'
-                )
-            ]);
-        } else if (element.contextValue === 'build-parent') {
-            // Build options children
-            return Promise.resolve([
-                new ROS2TreeItem(
-                    'Run Build',
-                    'ros2.build',
-                    vscode.TreeItemCollapsibleState.None,
-                    '▶️',
-                    'build-run'
                 ),
                 new ROS2TreeItem(
-                    `${this.symlinkInstall ? '☑' : '☐'} Symlink Install`,
-                    'ros2.toggleSymlinkInstall',
+                    'Generate .gitignore',
+                    'ros2.generateGitignore',
                     vscode.TreeItemCollapsibleState.None,
-                    undefined,
-                    'build-option-symlink'
-                ),
-                new ROS2TreeItem(
-                    `${this.addGitignore ? '☑' : '☐'} Add .gitignore`,
-                    'ros2.toggleGitignore',
-                    vscode.TreeItemCollapsibleState.None,
-                    undefined,
-                    'build-option-gitignore'
+                    '👁',
+                    'generate-gitignore'
                 )
             ]);
         }
 
         return Promise.resolve([]);
-    }
-
-    // Toggle methods
-    toggleSymlinkInstall(): void {
-        this.symlinkInstall = !this.symlinkInstall;
-        this.refresh();
-    }
-
-    toggleGitignore(): void {
-        this.addGitignore = !this.addGitignore;
-        this.refresh();
-    }
-
-    // Getters for build options
-    getSymlinkInstall(): boolean {
-        return this.symlinkInstall;
-    }
-
-    getAddGitignore(): boolean {
-        return this.addGitignore;
     }
 }
 
