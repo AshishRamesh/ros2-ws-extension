@@ -1,71 +1,134 @@
-# ros2-ws-extension README
+# ROS 2 Developer Tools
 
-This is the README for your extension "ros2-ws-extension". After writing up a brief description, we recommend including the following sections.
+A comprehensive VS Code extension for ROS 2 developers that streamlines workspace management, build automation, and code generation.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### 🚀 Workspace Management
+- **Initialize Workspace**: Quickly set up a ROS 2 workspace structure
+- **Build Workspace**: Run `colcon build` with support for:
+  - `--symlink-install` flag
+  - `--packages-select` for selective builds
+- **Clean Build**: Remove build artifacts (build/, install/, log/)
 
-For example if there is an image subfolder under your extension project workspace:
+### 🎨 User Interface
+- **Welcome Panel**: Beautiful webview with quick access to common commands
+- **Sidebar Control Panel**: TreeView in the activity bar for easy navigation
 
-\!\[feature X\]\(images/feature-x.png\)
+### 📦 Package Generation
+Create ROS 2 packages with a guided wizard:
+- Support for both **ament_cmake** (C++) and **ament_python** packages
+- Automatic generation of:
+  - `package.xml` with proper dependencies
+  - `CMakeLists.txt` for C++ packages
+  - `setup.py` and `setup.cfg` for Python packages
+  - Proper directory structure (src/, include/)
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### 📝 Node Generation
+Create ROS 2 nodes with automatic boilerplate:
+- **C++ Nodes**:
+  - Complete node skeleton with timer example
+  - Automatic `CMakeLists.txt` updates
+  - Proper executable and install configuration
+- **Python Nodes**:
+  - Complete node skeleton with timer example
+  - Automatic `setup.py` entry point updates
+  - Executable permissions set automatically
+
+## Commands
+
+Access these commands via the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`):
+
+- `ROS 2: Initialize Workspace` - Create workspace structure
+- `ROS 2: Build Workspace` - Build all packages
+- `ROS 2: Clean Build` - Remove build artifacts
+- `ROS 2: Open Panel` - Open the welcome panel
+- `ROS 2: Create Package` - Launch package creation wizard
+- `ROS 2: Create Node` - Launch node creation wizard
+
+## Usage
+
+### Creating a Package
+
+1. Open Command Palette
+2. Run `ROS 2: Create Package`
+3. Follow the wizard:
+   - Enter package name
+   - Select build type (ament_cmake or ament_python)
+   - Add dependencies (optional)
+   - Add description (optional)
+
+### Creating a Node
+
+1. Open Command Palette
+2. Run `ROS 2: Create Node`
+3. Follow the wizard:
+   - Select target package
+   - Enter node name
+   - Choose language (C++ or Python)
+
+The extension will automatically:
+- Generate the node file with boilerplate code
+- Update CMakeLists.txt (C++) or setup.py (Python)
+- Set proper file permissions
+
+### Building Your Workspace
+
+1. Open Command Palette
+2. Run `ROS 2: Build Workspace`
+3. View build output in the "ROS 2 Build" output channel
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VS Code 1.106.1 or higher
+- ROS 2 installed on your system
+- `colcon` build tool
 
-## Extension Settings
+## Extension Structure
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+```
+src/
+├── extension.ts              # Main entry point
+├── views/
+│   ├── welcomePanel.ts      # Webview panel
+│   └── sidebarProvider.ts   # TreeView provider
+├── services/
+│   ├── commandRunner.ts     # Shell command executor
+│   └── colconService.ts     # Colcon integration
+├── wizards/
+│   ├── packageWizard.ts     # Package creation wizard
+│   └── nodeWizard.ts        # Node creation wizard
+├── generators/
+│   ├── packageGenerator.ts  # Package templates
+│   └── nodeGenerator.ts     # Node templates
+└── utils/
+    └── workspaceUtils.ts    # Workspace utilities
+```
 
-For example:
+## Development
 
-This extension contributes the following settings:
+### Building
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+```bash
+npm install
+npm run compile
+```
 
-## Known Issues
+### Testing
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+Press `F5` to launch the Extension Development Host.
 
-## Release Notes
+### Packaging
 
-Users appreciate release notes as you update your extension.
+```bash
+npm install -g @vscode/vsce
+vsce package
+```
 
-### 1.0.0
+## License
 
-Initial release of ...
+TODO
 
-### 1.0.1
+## Contributing
 
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Contributions are welcome! Please feel free to submit a Pull Request.

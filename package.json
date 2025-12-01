@@ -1,23 +1,60 @@
 {
   "name": "ros2-ws-extension",
-  "displayName": "ROS2_WS_Extension",
-  "description": "",
+  "displayName": "ROS 2 Developer Tools",
+  "description": "A comprehensive VS Code extension for ROS 2 developers with workspace management, build automation, and code generation",
   "version": "0.0.1",
+  "publisher": "ros2-dev",
   "engines": {
     "vscode": "^1.106.1"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "ros2-ws-extension.helloWorld",
-        "title": "Hello World"
+        "command": "ros2.initWorkspace",
+        "title": "ROS 2: Initialize Workspace"
+      },
+      {
+        "command": "ros2.build",
+        "title": "ROS 2: Build Workspace"
+      },
+      {
+        "command": "ros2.cleanBuild",
+        "title": "ROS 2: Clean Build"
+      },
+      {
+        "command": "ros2.openPanel",
+        "title": "ROS 2: Open Panel"
+      },
+      {
+        "command": "ros2.createPackage",
+        "title": "ROS 2: Create Package"
+      },
+      {
+        "command": "ros2.createNode",
+        "title": "ROS 2: Create Node"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ros2-explorer",
+          "title": "ROS 2",
+          "icon": "resources/ros2-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ros2-explorer": [
+        {
+          "id": "ros2ControlPanel",
+          "name": "Control Panel"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
