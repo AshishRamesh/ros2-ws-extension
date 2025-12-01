@@ -78,8 +78,28 @@ int main(int argc, char * argv[])
     }
 
     private async generatePythonNode(packagePath: string, packageName: string, nodeName: string): Promise<void> {
-        const pythonPackagePath = path.join(packagePath, packageName);
-        const nodeFilePath = path.join(pythonPackagePath, `${nodeName}.py`);
+        const buildType = await this.getPackageBuildType(packagePath);
+
+        let nodeFilePath: string;
+        let pythonContent: string;
+
+        if (buildType === 'ament_cmake') {
+            // For ament_cmake, place scripts in 'scripts' folder
+            const scriptsPath = path.join(packagePath, 'scripts');
+            if (!fs.existsSync(scriptsPath)) {
+                fs.mkdirSync(scriptsPath);
+            }
+            nodeFilePath = path.join(scriptsPath, `${nodeName}.py`);
+        } else {
+            // For ament_python, place in package folder
+            const pythonPackagePath = path.join(packagePath, packageName);
+            if (!fs.existsSync(pythonPackagePath)) {
+                // Fallback if package folder doesn't match package name (rare but possible)
+                // Try to find a folder with __init__.py
+                throw new Error(`Python package directory '${packageName}' not found`);
+            }
+            nodeFilePath = path.join(pythonPackagePath, `${nodeName}.py`);
+        }
 
         // Check if file already exists
         if (fs.existsSync(nodeFilePath)) {
@@ -87,7 +107,7 @@ int main(int argc, char * argv[])
         }
 
         // Generate Python node skeleton
-        const pythonContent = `#!/usr/bin/env python3
+        pythonContent = `#!/usr/bin/env python3
 
 import rclpy
 from rclpy.node import Node
@@ -120,8 +140,24 @@ if __name__ == '__main__':
         fs.writeFileSync(nodeFilePath, pythonContent);
         fs.chmodSync(nodeFilePath, '755'); // Make executable
 
-        // Update setup.py
-        await this.updateSetupPy(packagePath, packageName, nodeName);
+        if (buildType === 'ament_cmake') {
+            await this.updateCMakeListsForPython(packagePath, nodeName);
+        } else {
+            await this.updateSetupPy(packagePath, packageName, nodeName);
+        }
+    }
+
+    private async getPackageBuildType(packagePath: string): Promise<string> {
+        const packageXmlPath = path.join(packagePath, 'package.xml');
+        if (!fs.existsSync(packageXmlPath)) {
+            return 'ament_python'; // Default assumption if missing (shouldn't happen)
+        }
+
+        const content = fs.readFileSync(packageXmlPath, 'utf-8');
+        if (content.includes('<build_type>ament_cmake</build_type>')) {
+            return 'ament_cmake';
+        }
+        return 'ament_python';
     }
 
     private async updateCMakeLists(packagePath: string, packageName: string, nodeName: string): Promise<void> {
@@ -147,6 +183,27 @@ if __name__ == '__main__':
             // Add install target
             const installCode = `\ninstall(TARGETS\n  ${nodeName}\n  DESTINATION lib/\${PROJECT_NAME}\n)\n`;
             content = content.replace(installComment, installComment + installCode);
+        }
+
+        fs.writeFileSync(cmakeFilePath, content);
+    }
+
+    private async updateCMakeListsForPython(packagePath: string, nodeName: string): Promise<void> {
+        const cmakeFilePath = path.join(packagePath, 'CMakeLists.txt');
+
+        if (!fs.existsSync(cmakeFilePath)) {
+            throw new Error('CMakeLists.txt not found');
+        }
+
+        let content = fs.readFileSync(cmakeFilePath, 'utf-8');
+        const installComment = '# Install targets';
+
+        if (content.includes(installComment)) {
+            const installCode = `\ninstall(PROGRAMS\n  scripts/${nodeName}.py\n  DESTINATION lib/\${PROJECT_NAME}\n)\n`;
+            content = content.replace(installComment, installComment + installCode);
+        } else {
+            // Append to end if comment not found
+            content += `\ninstall(PROGRAMS\n  scripts/${nodeName}.py\n  DESTINATION lib/\${PROJECT_NAME}\n)\n`;
         }
 
         fs.writeFileSync(cmakeFilePath, content);

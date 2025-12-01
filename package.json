@@ -36,6 +36,18 @@
       {
         "command": "ros2.createNode",
         "title": "ROS 2: Create Node"
+      },
+      {
+        "command": "ros2.generateGitignore",
+        "title": "ROS 2: Generate .gitignore"
+      },
+      {
+        "command": "ros2.setupEnvironment",
+        "title": "ROS 2: Setup Environment"
+      },
+      {
+        "command": "ros2.createRunConfiguration",
+        "title": "ROS 2: Create Run Configuration"
       }
     ],
     "viewsContainers": {
@@ -51,10 +63,68 @@
       "ros2-explorer": [
         {
           "id": "ros2ControlPanel",
-          "name": "Control Panel"
+          "name": "Control Panel",
+          "icon": "resources/ros2-icon.svg"
         }
       ]
-    }
+    },
+    "debuggers": [
+      {
+        "type": "ros2",
+        "label": "ROS 2",
+        "configurationAttributes": {
+          "launch": {
+            "required": [],
+            "properties": {
+              "target": {
+                "type": "string",
+                "description": "Target type: 'launch-file' or 'node'",
+                "enum": [
+                  "launch-file",
+                  "node"
+                ],
+                "default": "launch-file"
+              },
+              "launchFile": {
+                "type": "string",
+                "description": "Path to the launch file (required if target is 'launch-file')",
+                "default": "${workspaceFolder}/src/package/launch/file.launch.py"
+              },
+              "package": {
+                "type": "string",
+                "description": "Package name (required if target is 'node')"
+              },
+              "executable": {
+                "type": "string",
+                "description": "Executable name (required if target is 'node')"
+              },
+              "sourceFile": {
+                "type": "string",
+                "description": "Path to setup file to source before running",
+                "default": "${workspaceFolder}/install/setup.bash"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "ros2",
+            "request": "launch",
+            "name": "ROS 2: Launch File",
+            "target": "launch-file",
+            "launchFile": "${workspaceFolder}/src/package/launch/file.launch.py"
+          },
+          {
+            "type": "ros2",
+            "request": "launch",
+            "name": "ROS 2: Run Node",
+            "target": "node",
+            "package": "my_package",
+            "executable": "my_node"
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

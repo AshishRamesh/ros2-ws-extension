@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
+import { EnvironmentService } from '../services/environmentService';
 
 export class WelcomePanel {
     public static currentPanel: WelcomePanel | undefined;
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
+    private readonly _environmentService: EnvironmentService;
 
-    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, environmentService: EnvironmentService) {
         this._panel = panel;
+        this._environmentService = environmentService;
 
         // Set the webview's initial html content
         this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
@@ -27,6 +30,9 @@ export class WelcomePanel {
                     case 'cleanBuild':
                         vscode.commands.executeCommand('ros2.cleanBuild');
                         return;
+                    case 'runLaunch':
+                        vscode.commands.executeCommand('ros2.runLaunchFile');
+                        return;
                 }
             },
             null,
@@ -34,7 +40,7 @@ export class WelcomePanel {
         );
     }
 
-    public static createOrShow(extensionUri: vscode.Uri) {
+    public static createOrShow(extensionUri: vscode.Uri, environmentService: EnvironmentService) {
         // If we already have a panel, show it
         if (WelcomePanel.currentPanel) {
             WelcomePanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
@@ -52,7 +58,7 @@ export class WelcomePanel {
             }
         );
 
-        WelcomePanel.currentPanel = new WelcomePanel(panel, extensionUri);
+        WelcomePanel.currentPanel = new WelcomePanel(panel, extensionUri, environmentService);
     }
 
     public dispose() {
@@ -70,6 +76,13 @@ export class WelcomePanel {
     }
 
     private _getHtmlForWebview(webview: vscode.Webview): string {
+        const envInfo = this._environmentService.detectEnvironment();
+        const distroDisplay = envInfo.rosDistro ? `ROS 2 ${envInfo.rosDistro.charAt(0).toUpperCase() + envInfo.rosDistro.slice(1)}` : 'ROS 2 Not Detected';
+        const isWorkspace = envInfo.isWorkspace;
+        const disabledAttr = isWorkspace ? '' : 'disabled';
+        const disabledClass = isWorkspace ? '' : 'disabled';
+        const warningDisplay = isWorkspace ? 'none' : 'block';
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,6 +108,25 @@ export class WelcomePanel {
             color: var(--vscode-descriptionForeground);
             margin-bottom: 30px;
             font-size: 14px;
+        }
+
+        .banner {
+            background-color: var(--vscode-activityBar-background);
+            color: var(--vscode-activityBar-foreground);
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .warning-banner {
+            background-color: var(--vscode-inputValidation-warningBackground);
+            border: 1px solid var(--vscode-inputValidation-warningBorder);
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            display: ${warningDisplay};
         }
         
         .button-container {
@@ -123,6 +155,13 @@ export class WelcomePanel {
         button:active {
             opacity: 0.8;
         }
+
+        button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
         
         .button-icon {
             margin-right: 8px;
@@ -142,6 +181,14 @@ export class WelcomePanel {
 <body>
     <h1>🤖 ROS 2 Developer Tools</h1>
     <div class="subtitle">Streamline your ROS 2 development workflow</div>
+
+    <div class="banner">
+        ${distroDisplay}
+    </div>
+
+    <div class="warning-banner">
+        ⚠️ Not a ROS 2 workspace. Please initialize a workspace or open a folder with a src/ directory.
+    </div>
     
     <div class="section">
         <div class="section-title">Workspace Management</div>
@@ -149,11 +196,20 @@ export class WelcomePanel {
             <button onclick="sendMessage('initWorkspace')">
                 <span class="button-icon">📁</span>Initialize Workspace
             </button>
-            <button onclick="sendMessage('build')">
+            <button onclick="sendMessage('build')" ${disabledAttr} class="${disabledClass}">
                 <span class="button-icon">🔨</span>Build Workspace
             </button>
-            <button onclick="sendMessage('cleanBuild')">
+            <button onclick="sendMessage('cleanBuild')" ${disabledAttr} class="${disabledClass}">
                 <span class="button-icon">🧹</span>Clean Build
+            </button>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Launch & Simulation</div>
+        <div class="button-container">
+            <button onclick="sendMessage('runLaunch')" ${disabledAttr} class="${disabledClass}">
+                <span class="button-icon">🚀</span>Run Launch File
             </button>
         </div>
     </div>

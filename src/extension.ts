@@ -5,6 +5,11 @@ import { ColconService } from './services/colconService';
 import { PackageWizard } from './wizards/packageWizard';
 import { NodeWizard } from './wizards/nodeWizard';
 import { BuildWizard } from './wizards/buildWizard';
+import { EnvironmentService } from './services/environmentService';
+import { LaunchService } from './services/launchService';
+import { Ros2DebugConfigurationProvider, Ros2DebugAdapterDescriptorFactory } from './debug/ros2DebugAdapter';
+import { NodeDiscoveryService } from './services/nodeDiscoveryService';
+import { RunConfigurationWizard } from './wizards/runConfigurationWizard';
 
 let outputChannel: vscode.OutputChannel;
 
@@ -17,6 +22,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Initialize services
 	const colconService = new ColconService(outputChannel);
+	const environmentService = new EnvironmentService(context);
+	const launchService = new LaunchService(outputChannel, environmentService);
+	const nodeDiscoveryService = new NodeDiscoveryService();
 
 	// Register commands
 
@@ -60,7 +68,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Open Welcome Panel
 	const openPanelCmd = vscode.commands.registerCommand('ros2.openPanel', () => {
-		WelcomePanel.createOrShow(context.extensionUri);
+		WelcomePanel.createOrShow(context.extensionUri, environmentService);
+	});
+
+	// Setup Environment
+	const setupEnvCmd = vscode.commands.registerCommand('ros2.setupEnvironment', () => {
+		environmentService.setupEnvironment();
 	});
 
 	// Create Package
@@ -85,11 +98,32 @@ export function activate(context: vscode.ExtensionContext) {
 		await colconService.generateGitignore(workspaceFolder.uri.fsPath);
 	});
 
+	// Run Launch File
+	const runLaunchFileCmd = vscode.commands.registerCommand('ros2.runLaunchFile', (launchFile) => {
+		launchService.runLaunchFile(launchFile);
+	});
+
+	// Create Run Configuration
+	const createRunConfigCmd = vscode.commands.registerCommand('ros2.createRunConfiguration', async (node?: any) => {
+		// If called from tree view, node is passed
+		// If called from palette, node is undefined
+		const wizard = new RunConfigurationWizard(nodeDiscoveryService);
+		// TODO: Pass node to wizard if available to skip selection
+		await wizard.run();
+	});
+
 	// Register sidebar provider
-	const sidebarProvider = new ROS2SidebarProvider();
+	const sidebarProvider = new ROS2SidebarProvider(launchService, nodeDiscoveryService);
 	const treeView = vscode.window.createTreeView('ros2ControlPanel', {
 		treeDataProvider: sidebarProvider
 	});
+
+	// Register Debug Provider
+	const debugProvider = new Ros2DebugConfigurationProvider();
+	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('ros2', debugProvider));
+
+	const debugFactory = new Ros2DebugAdapterDescriptorFactory();
+	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('ros2', debugFactory));
 
 	// Add all subscriptions
 	context.subscriptions.push(
@@ -100,6 +134,9 @@ export function activate(context: vscode.ExtensionContext) {
 		createPackageCmd,
 		createNodeCmd,
 		generateGitignoreCmd,
+		setupEnvCmd,
+		runLaunchFileCmd,
+		createRunConfigCmd,
 		treeView
 	);
 }
