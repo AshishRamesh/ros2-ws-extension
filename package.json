@@ -2,13 +2,13 @@
   "name": "ros2-ws-extension",
   "displayName": "ROS 2 Developer Tools",
   "description": "A comprehensive VS Code extension for ROS 2 developers with workspace management, build automation, and code generation",
-  "version": "0.0.1-alpha",
+  "version": "0.1.1",
   "publisher": "AshishRamesh",
   "license": "MIT",
   "repository": {
-  "type": "git",
-  "url": "https://github.com/AshishRamesh/ros2-ws-extension.git"
-},
+    "type": "git",
+    "url": "https://github.com/AshishRamesh/ros2-ws-extension.git"
+  },
   "engines": {
     "vscode": "^1.104.0"
   },
@@ -16,6 +16,10 @@
     "Other"
   ],
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onView:ros2-sidebar",
+    "workspaceContains:src"
+  ],
   "contributes": {
     "commands": [
       {
@@ -47,6 +51,31 @@
         "title": "ROS 2: Generate .gitignore"
       },
       {
+        "command": "ros2.playBag",
+        "title": "ROS 2: Play Bag",
+        "icon": "$(play)"
+      },
+      {
+        "command": "ros2.runNode",
+        "title": "ROS 2: Run Node",
+        "icon": "$(play)"
+      },
+      {
+        "command": "ros2.configureWorkflow",
+        "title": "ROS 2: Configure Workflow",
+        "icon": "$(plus)"
+      },
+      {
+        "command": "ros2.runWorkflow",
+        "title": "ROS 2: Run Workflow",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "ros2.stopWorkflow",
+        "title": "ROS 2: Stop Workflow",
+        "icon": "$(stop)"
+      },
+      {
         "command": "ros2.setupEnvironment",
         "title": "ROS 2: Setup Environment"
       },
@@ -63,44 +92,61 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "ros2-explorer",
+          "id": "ros2-sidebar",
           "title": "ROS 2",
           "icon": "resources/ros2-icon.svg"
         }
       ]
     },
     "views": {
-      "ros2-explorer": [
+      "ros2-sidebar": [
         {
           "id": "ros2Workspace",
-          "name": "Workspace"
+          "name": "Workspace",
+          "icon": "$(folder)"
         },
         {
           "id": "ros2RunDebug",
-          "name": "Run & Debug"
+          "name": "Run & Debug",
+          "icon": "$(debug-alt)"
         },
         {
           "id": "ros2Topics",
-          "name": "ROS 2 Topics"
+          "name": "ROS 2 Topics",
+          "icon": "$(list-flat)"
         },
         {
           "id": "ros2Bag",
-          "name": "ROS 2 Bag"
+          "name": "ROS 2 Bag",
+          "icon": "$(briefcase)"
         },
         {
-          "id": "ros2TopicsView",
-          "name": "ROS 2 Topics",
-          "type": "webview",
-          "when": "false"
+          "id": "ros2Workflows",
+          "name": "ROS 2 Workflows",
+          "icon": "$(list-ordered)"
         }
       ]
     },
     "menus": {
+      "editor/title": [
+        {
+          "command": "ros2.runWorkflow",
+          "group": "navigation",
+          "when": "resourceExtname == .launch.py || resourceExtname == .xml || resourceExtname == .yaml"
+        }
+      ],
       "view/title": [
         {
           "command": "ros2.refreshTopics",
           "when": "view == ros2Topics",
           "group": "navigation"
+        },
+        {
+          "command": "ros2.configureWorkflow",
+          "when": "view == ros2Workflows",
+          "group": "navigation",
+          "title": "New Workflow",
+          "icon": "$(plus)"
         }
       ]
     },
@@ -160,7 +206,19 @@
           }
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "ROS 2 Toolkit",
+      "properties": {
+        "ros2Toolkit.workflowSteps": {
+          "type": "object",
+          "description": "Configuration for ROS 2 Workflows",
+          "default": {
+            "workflows": []
+          }
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

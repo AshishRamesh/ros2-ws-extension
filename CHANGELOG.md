@@ -2,7 +2,54 @@
 
 All notable changes to the "ROS 2 Developer Tools" extension will be documented in this file.
 
-## [0.1.0] - 2025-12-02
+## [0.1.1-alpha] - 2025-12-02
+
+### Added
+- **Enhanced Node Detection**: Improved CMakeLists.txt parsing to detect all C++ nodes
+  - Now scans `add_executable()` directives
+  - Scans `install(TARGETS ...)` directives for installed executables
+  - Scans `install(PROGRAMS ...)` for Python scripts in CMake packages
+  - Removes comments before parsing to avoid false matches
+  - Validates node names (alphanumeric + underscore only)
+  - Filters out CMake variables and keywords
+- **Direct Node Execution**: Click any node to run it immediately
+  - Auto-sources workspace `install/setup.bash`
+  - Executes `ros2 run <package> <node>` in dedicated terminal
+  - Works exactly like launch files (no configuration needed)
+- **Terminal Reuse**: Smart terminal management for nodes and launch files
+  - Reuses existing terminals by name instead of creating duplicates
+  - Prevents terminal clutter from repeated runs
+  - Preserves terminal history across runs
+- **Auto-Refresh After Build**: Nodes and launch files automatically refresh when build completes
+  - Callback system in `ColconService`
+  - Ensures newly built nodes appear immediately
+
+### Changed
+- **Node Click Behavior**: Changed from opening Run Configuration Wizard to direct execution
+- **VS Code Version Requirement**: Updated to ^1.104.1
+
+### Fixed
+- **Node Discovery**: Fixed recursive directory scanning to find all packages
+  - Previously only found first package in nested directories
+  - Now correctly scans all packages at any nesting level
+- **CMakeLists.txt Parsing**: Improved regex patterns for multiline declarations
+- **Terminal Management**: Prevents creation of duplicate terminals for same node/launch file
+
+### Improved
+- **Code Optimization**: Removed unused variables and properties
+  - Removed unused `path` property from `DiscoveredNode` interface
+  - Cleaned up unnecessary code
+- **Logging**: Added comprehensive console logging for debugging
+  - Shows which nodes are detected from each package
+  - Logs parsing progress and results
+
+### Technical Details
+- Enhanced CMakeLists.txt scanning with 3 detection methods
+- Better handling of CMake syntax variations
+- Improved terminal lifecycle management
+- Optimized node discovery performance
+
+## [0.1.0-alpha] - 2025-12-02
 
 ### Added
 

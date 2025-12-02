@@ -128,10 +128,11 @@ export class NodeDiscoveryService {
                     if (cleanProgram && !cleanProgram.startsWith('$') && !cleanProgram.startsWith('#')) {
                         // Extract just the filename
                         const filename = path.basename(cleanProgram);
-                        const nodeName = filename.replace(/\.py$/, '');
+                        // User requested to keep .py extension for CMake installed programs
+                        const nodeName = filename;
 
-                        // Validate it's a reasonable node name
-                        if (/^[a-zA-Z0-9_]+$/.test(nodeName)) {
+                        // Validate it's a reasonable node name (allow dots for .py)
+                        if (/^[a-zA-Z0-9_.]+$/.test(nodeName)) {
                             const alreadyAdded = nodes.some(n => n.package === packageName && n.name === nodeName);
                             if (!alreadyAdded) {
                                 console.log(`Found Python script from CMake: ${packageName}/${nodeName}`);

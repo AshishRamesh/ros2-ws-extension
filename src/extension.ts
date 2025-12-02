@@ -18,6 +18,10 @@ import { BagPlaybackWizard } from './wizards/bagPlaybackWizard';
 import { TopicsService } from './services/topicsService';
 import { EchoService } from './services/echoService';
 import { TopicEchoPanel } from './views/topicEchoPanel';
+import { WorkflowConfigPanel } from './views/workflowConfigPanel';
+import { WorkflowViewProvider } from './views/workflowViewProvider';
+import { WorkflowRunner } from './services/workflowRunner';
+import { Workflow, WorkflowConfiguration } from './types/workflow';
 
 let outputChannel: vscode.OutputChannel;
 
@@ -35,6 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const nodeDiscoveryService = new NodeDiscoveryService();
 	const topicsService = new TopicsService();
 	const echoService = new EchoService();
+	const workflowRunner = new WorkflowRunner(launchService, nodeDiscoveryService);
 
 	// Register commands
 
@@ -185,6 +190,66 @@ export function activate(context: vscode.ExtensionContext) {
 		terminal.sendText(`ros2 run ${node.package} ${node.name}`);
 	});
 
+	// Workflow Configuration
+	const configureWorkflowCmd = vscode.commands.registerCommand('ros2.configureWorkflow', () => {
+		WorkflowConfigPanel.createOrShow(
+			context.extensionUri,
+			(config: WorkflowConfiguration) => {
+				// Save to workspace settings
+				const workspaceConfig = vscode.workspace.getConfiguration('ros2Toolkit');
+				workspaceConfig.update('workflowSteps', config, vscode.ConfigurationTarget.Workspace);
+			},
+			launchService,
+			nodeDiscoveryService
+		);
+	});
+
+	// Run Workflow
+	const runWorkflowCmd = vscode.commands.registerCommand('ros2.runWorkflow', async (workflow?: Workflow) => {
+		const config = vscode.workspace.getConfiguration('ros2Toolkit');
+		const workflowConfig: WorkflowConfiguration = config.get('workflowSteps') || { workflows: [] };
+
+		let targetWorkflow = workflow;
+
+		// If no workflow passed, try to find one (maybe prompt user or check for single workflow)
+		if (!targetWorkflow) {
+			// If there's only one workflow, run it
+			if (workflowConfig.workflows.length === 1) {
+				targetWorkflow = workflowConfig.workflows[0];
+			} else if (workflowConfig.workflows.length > 1) {
+				// Show quick pick
+				const selected = await vscode.window.showQuickPick(
+					workflowConfig.workflows.map(w => w.name),
+					{ placeHolder: 'Select workflow to run' }
+				);
+				if (selected) {
+					targetWorkflow = workflowConfig.workflows.find(w => w.name === selected);
+				}
+			}
+		}
+
+		if (!targetWorkflow) {
+			if (workflowConfig.workflows.length === 0) {
+				const configure = await vscode.window.showInformationMessage(
+					'No workflows configured. Configure one now?',
+					'Configure', 'Cancel'
+				);
+				if (configure === 'Configure') {
+					vscode.commands.executeCommand('ros2.configureWorkflow');
+				}
+			}
+			return;
+		}
+
+		await workflowRunner.runWorkflow(targetWorkflow);
+	});
+
+	// Stop Workflow
+	const stopWorkflowCmd = vscode.commands.registerCommand('ros2.stopWorkflow', () => {
+		workflowRunner.stopWorkflow();
+		vscode.window.showInformationMessage('Workflow stopped');
+	});
+
 	// Register view providers
 	const workspaceProvider = new WorkspaceViewProvider();
 	const workspaceView = vscode.window.createTreeView('ros2Workspace', {
@@ -212,6 +277,11 @@ export function activate(context: vscode.ExtensionContext) {
 		treeDataProvider: bagProvider
 	});
 
+	const workflowProvider = new WorkflowViewProvider(workflowRunner);
+	const workflowView = vscode.window.createTreeView('ros2Workflows', {
+		treeDataProvider: workflowProvider
+	});
+
 	// Register Debug Provider
 	const debugProvider = new Ros2DebugConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('ros2', debugProvider));
@@ -237,10 +307,14 @@ export function activate(context: vscode.ExtensionContext) {
 		recordBagCmd,
 		playBagCmd,
 		runNodeCmd,
+		configureWorkflowCmd,
+		runWorkflowCmd,
+		stopWorkflowCmd,
 		workspaceView,
 		runDebugView,
 		topicsView,
-		bagView
+		bagView,
+		workflowView
 	);
 }
 
