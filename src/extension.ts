@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { WelcomePanel } from './views/welcomePanel';
 import { ROS2SidebarProvider } from './views/sidebarProvider';
+import { WorkspaceViewProvider } from './views/workspaceViewProvider';
+import { RunDebugViewProvider } from './views/runDebugViewProvider';
+import { TopicsTreeViewProvider } from './views/topicsTreeViewProvider';
+import { BagViewProvider } from './views/bagViewProvider';
 import { ColconService } from './services/colconService';
 import { PackageWizard } from './wizards/packageWizard';
 import { NodeWizard } from './wizards/nodeWizard';
@@ -10,6 +14,12 @@ import { LaunchService } from './services/launchService';
 import { Ros2DebugConfigurationProvider, Ros2DebugAdapterDescriptorFactory } from './debug/ros2DebugAdapter';
 import { NodeDiscoveryService } from './services/nodeDiscoveryService';
 import { RunConfigurationWizard } from './wizards/runConfigurationWizard';
+import { BagRecordingWizard } from './wizards/bagRecordingWizard';
+import { BagPlaybackWizard } from './wizards/bagPlaybackWizard';
+import { TopicsService } from './services/topicsService';
+import { EchoService } from './services/echoService';
+import { TopicsViewProvider } from './views/topicsViewProvider';
+import { TopicEchoPanel } from './views/topicEchoPanel';
 
 let outputChannel: vscode.OutputChannel;
 
@@ -25,6 +35,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const environmentService = new EnvironmentService(context);
 	const launchService = new LaunchService(outputChannel, environmentService);
 	const nodeDiscoveryService = new NodeDiscoveryService();
+	const topicsService = new TopicsService();
+	const echoService = new EchoService();
 
 	// Register commands
 
@@ -112,11 +124,62 @@ export function activate(context: vscode.ExtensionContext) {
 		await wizard.run();
 	});
 
-	// Register sidebar provider
-	const sidebarProvider = new ROS2SidebarProvider(launchService, nodeDiscoveryService);
-	const treeView = vscode.window.createTreeView('ros2ControlPanel', {
-		treeDataProvider: sidebarProvider
+	// Echo Topic
+	const echoTopicCmd = vscode.commands.registerCommand('ros2.echoTopic', async (topic: string) => {
+		const terminal = vscode.window.createTerminal(`ROS 2 Echo: ${topic}`);
+		terminal.show();
+		terminal.sendText(`ros2 topic echo ${topic}`);
 	});
+
+	// Refresh Topics
+	const refreshTopicsCmd = vscode.commands.registerCommand('ros2.refreshTopics', () => {
+		topicsTreeProvider.refresh();
+		vscode.window.showInformationMessage('Topics refreshed');
+	});
+
+	// View Topic Messages
+	const viewTopicMessagesCmd = vscode.commands.registerCommand('ros2.viewTopicMessages', (topic: string) => {
+		TopicEchoPanel.createOrShow(context.extensionUri, topic, echoService);
+	});
+
+	// Record Bag
+	const recordBagCmd = vscode.commands.registerCommand('ros2.recordBag', async () => {
+		const wizard = new BagRecordingWizard(topicsService);
+		await wizard.run();
+	});
+
+	// Play Bag
+	const playBagCmd = vscode.commands.registerCommand('ros2.playBag', async () => {
+		const wizard = new BagPlaybackWizard();
+		await wizard.run();
+	});
+
+	// Register view providers
+	const workspaceProvider = new WorkspaceViewProvider();
+	const workspaceView = vscode.window.createTreeView('ros2Workspace', {
+		treeDataProvider: workspaceProvider
+	});
+
+	const runDebugProvider = new RunDebugViewProvider(launchService, nodeDiscoveryService);
+	const runDebugView = vscode.window.createTreeView('ros2RunDebug', {
+		treeDataProvider: runDebugProvider
+	});
+
+	const topicsTreeProvider = new TopicsTreeViewProvider(topicsService, echoService);
+	const topicsView = vscode.window.createTreeView('ros2Topics', {
+		treeDataProvider: topicsTreeProvider
+	});
+
+	const bagProvider = new BagViewProvider();
+	const bagView = vscode.window.createTreeView('ros2Bag', {
+		treeDataProvider: bagProvider
+	});
+
+	// Register Topics View Provider
+	const topicsViewProvider = new TopicsViewProvider(context.extensionUri, topicsService, echoService);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(TopicsViewProvider.viewType, topicsViewProvider)
+	);
 
 	// Register Debug Provider
 	const debugProvider = new Ros2DebugConfigurationProvider();
@@ -137,7 +200,15 @@ export function activate(context: vscode.ExtensionContext) {
 		setupEnvCmd,
 		runLaunchFileCmd,
 		createRunConfigCmd,
-		treeView
+		echoTopicCmd,
+		refreshTopicsCmd,
+		viewTopicMessagesCmd,
+		recordBagCmd,
+		playBagCmd,
+		workspaceView,
+		runDebugView,
+		topicsView,
+		bagView
 	);
 }
 

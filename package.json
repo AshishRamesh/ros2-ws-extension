@@ -10,6 +10,9 @@
   "categories": [
     "Other"
   ],
+  "activationEvents": [
+    "onView:ros2TopicsView"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -48,6 +51,11 @@
       {
         "command": "ros2.createRunConfiguration",
         "title": "ROS 2: Create Run Configuration"
+      },
+      {
+        "command": "ros2.refreshTopics",
+        "title": "Refresh Topics",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -62,9 +70,35 @@
     "views": {
       "ros2-explorer": [
         {
-          "id": "ros2ControlPanel",
-          "name": "Control Panel",
-          "icon": "resources/ros2-icon.svg"
+          "id": "ros2Workspace",
+          "name": "Workspace"
+        },
+        {
+          "id": "ros2RunDebug",
+          "name": "Run & Debug"
+        },
+        {
+          "id": "ros2Topics",
+          "name": "ROS 2 Topics"
+        },
+        {
+          "id": "ros2Bag",
+          "name": "ROS 2 Bag"
+        },
+        {
+          "id": "ros2TopicsView",
+          "name": "ROS 2 Topics",
+          "type": "webview",
+          "when": "false"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "ros2.refreshTopics",
+          "when": "view == ros2Topics",
+          "group": "navigation"
         }
       ]
     },

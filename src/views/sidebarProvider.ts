@@ -1,15 +1,22 @@
 import * as vscode from 'vscode';
 import { LaunchService, LaunchFile } from '../services/launchService';
 import { NodeDiscoveryService, DiscoveredNode } from '../services/nodeDiscoveryService';
+import { TopicsService } from '../services/topicsService';
+import { EchoService } from '../services/echoService';
 import { getWorkspaceRoot } from '../utils/workspaceUtils';
 
 export class ROS2SidebarProvider implements vscode.TreeDataProvider<ROS2TreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ROS2TreeItem | undefined | null | void> = new vscode.EventEmitter<ROS2TreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ROS2TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
+    private activeEchoTopic: string | null = null;
+    private echoMessages: string[] = [];
+
     constructor(
         private launchService: LaunchService,
-        private nodeDiscoveryService: NodeDiscoveryService
+        private nodeDiscoveryService: NodeDiscoveryService,
+        private topicsService: TopicsService,
+        private echoService: EchoService
     ) { }
 
     refresh(): void {
@@ -25,6 +32,21 @@ export class ROS2SidebarProvider implements vscode.TreeDataProvider<ROS2TreeItem
             // Root level
             return [
                 new ROS2TreeItem('Workspace', undefined, vscode.TreeItemCollapsibleState.Expanded, new vscode.ThemeIcon('folder'), 'workspace'),
+                new ROS2TreeItem('Run & Debug', undefined, vscode.TreeItemCollapsibleState.Collapsed, new vscode.ThemeIcon('debug-alt'), 'run-debug'),
+                new ROS2TreeItem('ROS 2 Topics', undefined, vscode.TreeItemCollapsibleState.Collapsed, new vscode.ThemeIcon('radio-tower'), 'topics')
+            ];
+        }
+
+        if (element.contextValue === 'topics') {
+            return this.getTopicsChildren();
+        }
+
+        if (element.contextValue === 'topic-item') {
+            return this.getTopicEchoChildren(element.label as string);
+        }
+
+        if (element.contextValue === 'run-debug') {
+            return [
                 new ROS2TreeItem('Launch Files', undefined, vscode.TreeItemCollapsibleState.Collapsed, new vscode.ThemeIcon('rocket'), 'launch-files'),
                 new ROS2TreeItem('Nodes', undefined, vscode.TreeItemCollapsibleState.Collapsed, new vscode.ThemeIcon('symbol-event'), 'nodes')
             ];
@@ -118,6 +140,70 @@ export class ROS2SidebarProvider implements vscode.TreeDataProvider<ROS2TreeItem
             }
         }
         return items.sort((a, b) => (typeof a.label === 'string' ? a.label : a.label.label).localeCompare(typeof b.label === 'string' ? b.label : b.label.label));
+    }
+
+    private async getTopicsChildren(): Promise<ROS2TreeItem[]> {
+        const topics = await this.topicsService.listTopics();
+
+        const items: ROS2TreeItem[] = [
+            new ROS2TreeItem('Refresh', 'ros2.refreshTopics', vscode.TreeItemCollapsibleState.None, new vscode.ThemeIcon('refresh'), 'refresh-topics')
+        ];
+
+        for (const topic of topics) {
+            const item = new ROS2TreeItem(
+                topic,
+                undefined,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                new vscode.ThemeIcon('radio-tower'),
+                'topic-item'
+            );
+            item.tooltip = `Click to expand and echo topic: ${topic}`;
+            items.push(item);
+        }
+        return items;
+    }
+
+    private async getTopicEchoChildren(topic: string): Promise<ROS2TreeItem[]> {
+        // Get topic info
+        const info = await this.topicsService.getTopicInfo(topic);
+
+        // Start echo if not already active for this topic
+        if (this.activeEchoTopic !== topic) {
+            this.activeEchoTopic = topic;
+            this.echoService.stopEcho();
+
+            // Start echo in background for frequency calculation
+            this.echoService.startEcho(topic, () => {
+                // Messages are handled by the panel, just update frequency
+                this.refresh();
+            });
+        }
+
+        // Return info items + view messages button
+        const items: ROS2TreeItem[] = [
+            new ROS2TreeItem(`Type: ${info.type}`, undefined, vscode.TreeItemCollapsibleState.None, new vscode.ThemeIcon('symbol-class'), 'topic-info'),
+            new ROS2TreeItem(`Publishers: ${info.publishers}`, undefined, vscode.TreeItemCollapsibleState.None, new vscode.ThemeIcon('account'), 'topic-info'),
+            new ROS2TreeItem(`Subscribers: ${info.subscribers}`, undefined, vscode.TreeItemCollapsibleState.None, new vscode.ThemeIcon('account'), 'topic-info'),
+            new ROS2TreeItem(`Frequency: ${this.echoService.getFrequency().toFixed(2)} Hz`, undefined, vscode.TreeItemCollapsibleState.None, new vscode.ThemeIcon('pulse'), 'topic-info'),
+            new ROS2TreeItem(`Messages: ${this.echoService.getMessageCount()}`, undefined, vscode.TreeItemCollapsibleState.None, new vscode.ThemeIcon('list-ordered'), 'topic-info')
+        ];
+
+        // Add clickable 'View Messages' item
+        const viewMessagesItem = new ROS2TreeItem(
+            'Click here to view messages',
+            'ros2.viewTopicMessages',
+            vscode.TreeItemCollapsibleState.None,
+            new vscode.ThemeIcon('output'),
+            'view-messages'
+        );
+        viewMessagesItem.command = {
+            command: 'ros2.viewTopicMessages',
+            title: 'View Messages',
+            arguments: [topic]
+        };
+        items.push(viewMessagesItem);
+
+        return items;
     }
 }
 
