@@ -152,6 +152,39 @@ export function activate(context: vscode.ExtensionContext) {
 		await wizard.run();
 	});
 
+	// Run Node - directly execute a node
+	const runNodeCmd = vscode.commands.registerCommand('ros2.runNode', async (node: any) => {
+		if (!node || !node.package || !node.name) {
+			vscode.window.showErrorMessage('Invalid node selected');
+			return;
+		}
+
+		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+		if (!workspaceRoot) {
+			vscode.window.showErrorMessage('No workspace folder open');
+			return;
+		}
+
+		const terminalName = `ROS 2: ${node.package}/${node.name}`;
+
+		// Check if terminal already exists
+		let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+
+		if (!terminal) {
+			// Create new terminal if it doesn't exist
+			terminal = vscode.window.createTerminal(terminalName);
+		}
+
+		terminal.show();
+
+		// Source workspace setup
+		const setupScript = `${workspaceRoot}/install/setup.bash`;
+		terminal.sendText(`source ${setupScript}`);
+
+		// Run the node
+		terminal.sendText(`ros2 run ${node.package} ${node.name}`);
+	});
+
 	// Register view providers
 	const workspaceProvider = new WorkspaceViewProvider();
 	const workspaceView = vscode.window.createTreeView('ros2Workspace', {
@@ -161,6 +194,12 @@ export function activate(context: vscode.ExtensionContext) {
 	const runDebugProvider = new RunDebugViewProvider(launchService, nodeDiscoveryService);
 	const runDebugView = vscode.window.createTreeView('ros2RunDebug', {
 		treeDataProvider: runDebugProvider
+	});
+
+	// Refresh nodes and launch files after build completes
+	colconService.setOnBuildComplete(() => {
+		console.log('Build completed - refreshing nodes and launch files');
+		runDebugProvider.refresh();
 	});
 
 	const topicsTreeProvider = new TopicsTreeViewProvider(topicsService, echoService);
@@ -197,6 +236,7 @@ export function activate(context: vscode.ExtensionContext) {
 		viewTopicMessagesCmd,
 		recordBagCmd,
 		playBagCmd,
+		runNodeCmd,
 		workspaceView,
 		runDebugView,
 		topicsView,

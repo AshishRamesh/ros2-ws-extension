@@ -6,7 +6,6 @@ export interface DiscoveredNode {
     package: string;
     name: string;
     type: 'cpp' | 'python';
-    path?: string;
 }
 
 export class NodeDiscoveryService {
@@ -61,16 +60,93 @@ export class NodeDiscoveryService {
     private async scanCMakeLists(cmakePath: string, packageName: string, nodes: DiscoveredNode[]): Promise<void> {
         try {
             const content = await fs.promises.readFile(cmakePath, 'utf-8');
-            // Regex to find add_executable(node_name ...)
-            const regex = /add_executable\s*\(\s*([a-zA-Z0-9_]+)/g;
+
+            // Remove comments to avoid false matches
+            const cleanedContent = content.replace(/#.*$/gm, '');
+
+            // Method 1: Find add_executable(node_name ...)
+            // Handles both single-line and multi-line declarations
+            const executableRegex = /add_executable\s*\(\s*([a-zA-Z0-9_]+)/gi;
             let match;
-            while ((match = regex.exec(content)) !== null) {
-                nodes.push({
-                    package: packageName,
-                    name: match[1],
-                    type: 'cpp'
-                });
+            while ((match = executableRegex.exec(cleanedContent)) !== null) {
+                const nodeName = match[1];
+                // Skip if it looks like a variable (starts with ${)
+                if (!nodeName.startsWith('${')) {
+                    console.log(`Found C++ executable: ${packageName}/${nodeName}`);
+                    nodes.push({
+                        package: packageName,
+                        name: nodeName,
+                        type: 'cpp'
+                    });
+                }
             }
+
+            // Method 2: Find install(TARGETS ...) which lists executables to install
+            // This catches executables that might be defined differently
+            const installTargetsRegex = /install\s*\(\s*TARGETS\s+([\s\S]*?)(?:DESTINATION|RUNTIME|LIBRARY|ARCHIVE)/gi;
+            while ((match = installTargetsRegex.exec(cleanedContent)) !== null) {
+                const targetsBlock = match[1];
+                // Split by whitespace and newlines
+                const targets = targetsBlock.trim().split(/\s+/);
+
+                for (const target of targets) {
+                    // Clean up the target name
+                    const cleanTarget = target.trim();
+
+                    // Skip if empty, a variable, or a CMake keyword
+                    if (cleanTarget &&
+                        !cleanTarget.startsWith('$') &&
+                        !cleanTarget.startsWith('#') &&
+                        cleanTarget !== 'ARCHIVE' &&
+                        cleanTarget !== 'LIBRARY' &&
+                        cleanTarget !== 'RUNTIME' &&
+                        cleanTarget !== 'DESTINATION' &&
+                        /^[a-zA-Z0-9_]+$/.test(cleanTarget)) {
+
+                        // Check if already added
+                        const alreadyAdded = nodes.some(n => n.package === packageName && n.name === cleanTarget);
+                        if (!alreadyAdded) {
+                            console.log(`Found C++ target from install: ${packageName}/${cleanTarget}`);
+                            nodes.push({
+                                package: packageName,
+                                name: cleanTarget,
+                                type: 'cpp'
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Method 3: Find install(PROGRAMS ...) for Python scripts in CMake packages
+            const installProgramsRegex = /install\s*\(\s*PROGRAMS\s+([\s\S]*?)(?:DESTINATION|TYPE)/gi;
+            while ((match = installProgramsRegex.exec(cleanedContent)) !== null) {
+                const programsBlock = match[1];
+                const programs = programsBlock.trim().split(/\s+/);
+
+                for (const program of programs) {
+                    const cleanProgram = program.trim();
+                    if (cleanProgram && !cleanProgram.startsWith('$') && !cleanProgram.startsWith('#')) {
+                        // Extract just the filename
+                        const filename = path.basename(cleanProgram);
+                        const nodeName = filename.replace(/\.py$/, '');
+
+                        // Validate it's a reasonable node name
+                        if (/^[a-zA-Z0-9_]+$/.test(nodeName)) {
+                            const alreadyAdded = nodes.some(n => n.package === packageName && n.name === nodeName);
+                            if (!alreadyAdded) {
+                                console.log(`Found Python script from CMake: ${packageName}/${nodeName}`);
+                                nodes.push({
+                                    package: packageName,
+                                    name: nodeName,
+                                    type: 'python'
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            console.log(`Finished scanning CMakeLists.txt for ${packageName}: found ${nodes.filter(n => n.package === packageName).length} nodes`);
         } catch (error) {
             console.error(`Failed to parse CMakeLists.txt at ${cmakePath}: ${error}`);
         }
@@ -108,9 +184,8 @@ export class NodeDiscoveryService {
                     if (script.endsWith('.py')) {
                         nodes.push({
                             package: packageName,
-                            name: script.replace('.py', ''), // Usually run as node_name.py but ROS 2 run often strips extension or uses filename
-                            type: 'python',
-                            path: path.join(scriptsPath, script)
+                            name: script.replace('.py', ''),
+                            type: 'python'
                         });
                     }
                 }

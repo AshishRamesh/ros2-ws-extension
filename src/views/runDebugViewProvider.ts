@@ -96,8 +96,8 @@ export class RunDebugViewProvider implements vscode.TreeDataProvider<RunDebugTre
                 item.description = node.package;
                 item.tooltip = `Package: ${node.package}\nType: ${node.type}`;
                 item.command = {
-                    command: 'ros2.createRunConfiguration',
-                    title: 'Create Run Configuration',
+                    command: 'ros2.runNode',
+                    title: 'Run Node',
                     arguments: [node]
                 };
                 items.push(item);

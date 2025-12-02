@@ -74,7 +74,7 @@ export class LaunchService {
     }
 
     /**
-     * Runs a launch file in a terminal
+     * Run a launch file
      */
     public runLaunchFile(launchFile: LaunchFile): void {
         const envInfo = this.environmentService.detectEnvironment();
@@ -84,7 +84,16 @@ export class LaunchService {
             return;
         }
 
-        const terminal = vscode.window.createTerminal(`ROS 2 Launch: ${launchFile.name}`);
+        const terminalName = `ROS 2 Launch: ${launchFile.name}`;
+
+        // Check if terminal already exists
+        let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+
+        if (!terminal) {
+            // Create new terminal if it doesn't exist
+            terminal = vscode.window.createTerminal(terminalName);
+        }
+
         terminal.show();
 
         // Source environment

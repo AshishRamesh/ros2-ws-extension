@@ -4,7 +4,13 @@ import * as path from 'path';
 import { runCommand } from './commandRunner';
 
 export class ColconService {
+    private onBuildCompleteCallback?: () => void;
+
     constructor(private outputChannel: vscode.OutputChannel) { }
+
+    public setOnBuildComplete(callback: () => void): void {
+        this.onBuildCompleteCallback = callback;
+    }
 
     /**
      * Initialize a ROS 2 workspace
@@ -52,7 +58,13 @@ export class ColconService {
 
         try {
             await runCommand(cmd, workspacePath, this.outputChannel);
-            this.outputChannel.appendLine('\n✓ Build completed successfully!');
+            this.outputChannel.appendLine('Build completed successfully!');
+            vscode.window.showInformationMessage('Build completed successfully!');
+
+            // Notify listeners that build is complete
+            if (this.onBuildCompleteCallback) {
+                this.onBuildCompleteCallback();
+            }
         } catch (error) {
             this.outputChannel.appendLine(`\n✗ Build failed: ${error}`);
             throw error;
