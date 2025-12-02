@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { WelcomePanel } from './views/welcomePanel';
-import { ROS2SidebarProvider } from './views/sidebarProvider';
 import { WorkspaceViewProvider } from './views/workspaceViewProvider';
 import { RunDebugViewProvider } from './views/runDebugViewProvider';
 import { TopicsTreeViewProvider } from './views/topicsTreeViewProvider';
@@ -18,7 +17,6 @@ import { BagRecordingWizard } from './wizards/bagRecordingWizard';
 import { BagPlaybackWizard } from './wizards/bagPlaybackWizard';
 import { TopicsService } from './services/topicsService';
 import { EchoService } from './services/echoService';
-import { TopicsViewProvider } from './views/topicsViewProvider';
 import { TopicEchoPanel } from './views/topicEchoPanel';
 
 let outputChannel: vscode.OutputChannel;
@@ -174,12 +172,6 @@ export function activate(context: vscode.ExtensionContext) {
 	const bagView = vscode.window.createTreeView('ros2Bag', {
 		treeDataProvider: bagProvider
 	});
-
-	// Register Topics View Provider
-	const topicsViewProvider = new TopicsViewProvider(context.extensionUri, topicsService, echoService);
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(TopicsViewProvider.viewType, topicsViewProvider)
-	);
 
 	// Register Debug Provider
 	const debugProvider = new Ros2DebugConfigurationProvider();

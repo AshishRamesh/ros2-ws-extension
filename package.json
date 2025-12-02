@@ -2,16 +2,18 @@
   "name": "ros2-ws-extension",
   "displayName": "ROS 2 Developer Tools",
   "description": "A comprehensive VS Code extension for ROS 2 developers with workspace management, build automation, and code generation",
-  "version": "0.0.1",
-  "publisher": "ros2-dev",
+  "version": "0.0.1-alpha",
+  "publisher": "AshishRamesh",
+  "license": "MIT",
+  "repository": {
+  "type": "git",
+  "url": "https://github.com/AshishRamesh/ros2-ws-extension.git"
+},
   "engines": {
-    "vscode": "^1.106.1"
+    "vscode": "^1.104.0"
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onView:ros2TopicsView"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -169,13 +171,13 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.106.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.46.3",
+    "@types/vscode": "^1.104.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "typescript-eslint": "^8.46.3"
   }
 }
