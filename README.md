@@ -1,11 +1,14 @@
 # ROS 2 Developer Tools
 
-A comprehensive VS Code extension for ROS 2 developers, providing workspace management, build automation, code generation, debugging, and real-time topic monitoring.
+A comprehensive VS Code extension for ROS 2 developers, providing workspace management, build automation, code generation, debugging, real-time topic monitoring, and bag recording/playback.
+
+> **⚠️ Pre-Release Notice**: This extension is currently in alpha. Features are stable but may undergo changes based on user feedback.
 
 > **If you find this extension useful, please consider giving it a star on GitHub! ⭐**
 
 <div align="center">
 
+[![GitHub](https://img.shields.io/badge/GitHub-ros2--ws--extension-green?style=flat-square&logo=github)](https://github.com/AshishRamesh/ros2-ws-extension)
 [![GitHub stars](https://img.shields.io/github/stars/AshishRamesh/ros2-ws-extension?style=social)](https://github.com/AshishRamesh/ros2-ws-extension/stargazers)
 [![GitHub views](https://komarev.com/ghpvc/?username=AshishRamesh-ros2-ws-extension&label=Views&style=flat-square)](https://github.com/AshishRamesh/ros2-ws-extension)
 
