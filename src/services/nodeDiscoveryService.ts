@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -72,7 +72,7 @@ export class NodeDiscoveryService {
                 const nodeName = match[1];
                 // Skip if it looks like a variable (starts with ${)
                 if (!nodeName.startsWith('${')) {
-                    console.log(`Found C++ executable: ${packageName}/${nodeName}`);
+
                     nodes.push({
                         package: packageName,
                         name: nodeName,
@@ -106,7 +106,7 @@ export class NodeDiscoveryService {
                         // Check if already added
                         const alreadyAdded = nodes.some(n => n.package === packageName && n.name === cleanTarget);
                         if (!alreadyAdded) {
-                            console.log(`Found C++ target from install: ${packageName}/${cleanTarget}`);
+
                             nodes.push({
                                 package: packageName,
                                 name: cleanTarget,
@@ -135,7 +135,7 @@ export class NodeDiscoveryService {
                         if (/^[a-zA-Z0-9_.]+$/.test(nodeName)) {
                             const alreadyAdded = nodes.some(n => n.package === packageName && n.name === nodeName);
                             if (!alreadyAdded) {
-                                console.log(`Found Python script from CMake: ${packageName}/${nodeName}`);
+
                                 nodes.push({
                                     package: packageName,
                                     name: nodeName,
@@ -147,7 +147,7 @@ export class NodeDiscoveryService {
                 }
             }
 
-            console.log(`Finished scanning CMakeLists.txt for ${packageName}: found ${nodes.filter(n => n.package === packageName).length} nodes`);
+
         } catch (error) {
             console.error(`Failed to parse CMakeLists.txt at ${cmakePath}: ${error}`);
         }

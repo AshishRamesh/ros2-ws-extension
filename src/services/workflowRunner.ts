@@ -10,6 +10,7 @@ export class WorkflowRunner {
     private isRunning = false;
     private runningWorkflowName?: string;
     private sourceCommand: string = '';
+    private lastTerminal: vscode.Terminal | undefined;
 
     private _onDidStateChange = new vscode.EventEmitter<void>();
     public readonly onDidStateChange = this._onDidStateChange.event;
@@ -47,9 +48,11 @@ export class WorkflowRunner {
             }
         }
 
+
         this.isRunning = true;
         this.runningWorkflowName = workflow.name;
         this.activeTerminals = [];
+        this.lastTerminal = undefined;
         this._onDidStateChange.fire();
 
         // Default source command
@@ -97,11 +100,9 @@ export class WorkflowRunner {
                     }
                     break;
 
-                case 'script':
-                    if (!step.config.scriptPath) {
-                        warnings.push(`Script step missing path: ${step.config.description || 'unnamed'}`);
-                    } else if (!fs.existsSync(step.config.scriptPath)) {
-                        warnings.push(`Script not found: ${step.config.scriptPath}`);
+                case 'command':
+                    if (!step.config.command) {
+                        warnings.push(`Command step missing command: ${step.config.description || 'unnamed'}`);
                     }
                     break;
             }
@@ -120,12 +121,9 @@ export class WorkflowRunner {
 
             const step = workflow.steps[i];
 
-            if (!step.enabled) {
-                console.log(`Skipping disabled step: ${step.config.description || step.type}`);
-                continue;
-            }
 
-            console.log(`Executing step ${i + 1}/${workflow.steps.length}: ${step.type} - ${step.config.description || 'unnamed'}`);
+
+
 
             await this.executeStep(step, workspaceRoot);
         }
@@ -134,6 +132,7 @@ export class WorkflowRunner {
     private async executeStep(step: WorkflowStep, workspaceRoot: string): Promise<void> {
         let terminal: vscode.Terminal | undefined;
         let command = '';
+        let terminalName = '';
 
         switch (step.type) {
             case 'source':
@@ -147,25 +146,23 @@ export class WorkflowRunner {
                 // We already set this.sourceCommand in runWorkflow.
                 // If we want to support custom paths, we'd need to update the step config.
                 // For now, let's just log it.
-                console.log('Source step encountered. Environment will be sourced for subsequent steps.');
+
                 break;
 
             case 'launch':
-                const launchName = `ROS 2: ${step.config.package} ${step.config.launchFile}`;
-                terminal = this.getOrCreateTerminal(launchName);
+                terminalName = `ROS 2: ${step.config.package} ${step.config.launchFile}`;
                 command = `ros2 launch ${step.config.package} ${step.config.launchFile}`;
                 break;
 
             case 'run':
-                const nodeName = `ROS 2: ${step.config.package} ${step.config.nodeName}`;
-                terminal = this.getOrCreateTerminal(nodeName);
+                terminalName = `ROS 2: ${step.config.package} ${step.config.nodeName}`;
                 command = `ros2 run ${step.config.package} ${step.config.nodeName}`;
                 break;
 
-            case 'script':
-                const scriptName = `ROS 2: Script ${path.basename(step.config.scriptPath || 'script')}`;
-                terminal = this.getOrCreateTerminal(scriptName);
-                command = `bash ${step.config.scriptPath}`;
+            case 'command':
+                const cmdPreview = (step.config.command || 'cmd').substring(0, 20);
+                terminalName = `ROS 2: Command ${cmdPreview}...`;
+                command = step.config.command || '';
                 break;
 
             case 'delay':
@@ -174,13 +171,28 @@ export class WorkflowRunner {
                 return; // No terminal needed for delay
         }
 
-        if (terminal && command) {
-            terminal.show();
-            if (this.sourceCommand) {
-                terminal.sendText(this.sourceCommand);
+        if (command) {
+            // Check if we should reuse the last terminal
+            if (step.sameTerminal && this.lastTerminal) {
+                terminal = this.lastTerminal;
+            } else {
+                // Create or get specific terminal
+                terminal = this.getOrCreateTerminal(terminalName);
+                this.lastTerminal = terminal;
+
+                // Only add to active terminals if not already tracked
+                if (!this.activeTerminals.includes(terminal)) {
+                    this.activeTerminals.push(terminal);
+                }
+
+                // Source environment for new terminals (or when switching terminals)
+                if (this.sourceCommand) {
+                    terminal.sendText(this.sourceCommand);
+                }
             }
+
+            terminal.show();
             terminal.sendText(command);
-            this.activeTerminals.push(terminal);
 
             // Small delay to ensure terminal is ready and command is sent
             await this.delay(500);

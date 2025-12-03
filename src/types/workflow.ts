@@ -1,7 +1,8 @@
 export interface WorkflowStep {
     id: string;
-    type: 'source' | 'launch' | 'run' | 'script' | 'delay';
+    type: 'source' | 'launch' | 'run' | 'command' | 'delay';
     enabled: boolean;
+    sameTerminal?: boolean;
     config: {
         // For 'launch' type
         package?: string;
@@ -10,8 +11,8 @@ export interface WorkflowStep {
         // For 'run' type
         nodeName?: string;
 
-        // For 'script' type
-        scriptPath?: string;
+        // For 'command' type
+        command?: string;
 
         // For 'delay' type
         delayMs?: number;

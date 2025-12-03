@@ -2,6 +2,26 @@
 
 All notable changes to the "ROS 2 Developer Tools" extension will be documented in this file.
 
+## [0.2.0-alpha] - 2025-12-03
+
+### Added
+- **ROS 2 Workflows**: Introduced a powerful new system to automate complex development sequences
+  - **Multi-step Automation**: Chain together launch files, nodes, shell commands, and delays
+  - **Configuration Panel**: Visual interface to create, edit, and reorder workflow steps
+  - **Sequential Execution**: Reliable execution of dependent tasks
+  - **Terminal Reuse**: Option to run steps in the same terminal to keep context and reduce clutter
+- **UI Polish**: Replaced emojis with professional SVG icons in Workflow Configuration Panel
+  - Cleaner, more consistent look with VS Code design
+
+### Fixed
+- **Terminal Management Bug**: Resolved issue where "Run in previous terminal" would still create a new terminal
+- **Code Cleanup**: Removed debug logging and unused code for better performance
+
+### Improved
+- **Codebase Optimization**: Comprehensive cleanup of `extension.ts` and services
+  - Removed `console.log` statements
+  - Removed unused imports and stale TODOs
+
 ## [0.1.1-alpha] - 2025-12-02
 
 ### Added

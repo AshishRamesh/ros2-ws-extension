@@ -26,7 +26,7 @@ import { Workflow, WorkflowConfiguration } from './types/workflow';
 let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('ROS 2 Developer Tools extension is now active!');
+
 
 	// Create output channel for build logs
 	outputChannel = vscode.window.createOutputChannel('ROS 2 Build');
@@ -123,7 +123,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// If called from tree view, node is passed
 		// If called from palette, node is undefined
 		const wizard = new RunConfigurationWizard(nodeDiscoveryService);
-		// TODO: Pass node to wizard if available to skip selection
+
 		await wizard.run();
 	});
 
@@ -263,7 +263,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Refresh nodes and launch files after build completes
 	colconService.setOnBuildComplete(() => {
-		console.log('Build completed - refreshing nodes and launch files');
+
 		runDebugProvider.refresh();
 	});
 
@@ -319,5 +319,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-	console.log('ROS 2 Developer Tools extension is now deactivated');
+
 }

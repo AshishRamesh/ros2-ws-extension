@@ -1,39 +1,44 @@
 import * as vscode from 'vscode';
-import { Workflow, WorkflowStep, WorkflowConfiguration } from '../types/workflow';
+import * as path from 'path';
+import * as fs from 'fs';
+import { Workflow, WorkflowConfiguration } from '../types/workflow';
 import { LaunchService } from '../services/launchService';
 import { NodeDiscoveryService } from '../services/nodeDiscoveryService';
 
 export class WorkflowConfigPanel {
     public static currentPanel: WorkflowConfigPanel | undefined;
     private readonly _panel: vscode.WebviewPanel;
+    private readonly _extensionUri: vscode.Uri;
     private _disposables: vscode.Disposable[] = [];
+    private readonly _onSave: (config: WorkflowConfiguration) => void;
+    private readonly _launchService: LaunchService;
+    private readonly _nodeDiscoveryService: NodeDiscoveryService;
 
     private constructor(
         panel: vscode.WebviewPanel,
         extensionUri: vscode.Uri,
-        private onSave: (config: WorkflowConfiguration) => void,
-        private launchService: LaunchService,
-        private nodeDiscoveryService: NodeDiscoveryService
+        onSave: (config: WorkflowConfiguration) => void,
+        launchService: LaunchService,
+        nodeDiscoveryService: NodeDiscoveryService
     ) {
         this._panel = panel;
+        this._extensionUri = extensionUri;
+        this._onSave = onSave;
+        this._launchService = launchService;
+        this._nodeDiscoveryService = nodeDiscoveryService;
 
-        // Set the webview's initial html content
-        this._update();
-
-        // Listen for when the panel is disposed
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-        // Handle messages from the webview
+        this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
+
         this._panel.webview.onDidReceiveMessage(
-            message => {
+            async message => {
                 switch (message.command) {
-                    case 'save':
-                        this.onSave(message.config);
-                        vscode.window.showInformationMessage('Workflow configuration saved');
-                        break;
                     case 'getConfig':
-                        this.sendCurrentConfig();
-                        this.sendAvailableItems();
+                        this.sendConfig();
+                        break;
+                    case 'save':
+                        await this.saveConfig(message.config);
                         break;
                 }
             },
@@ -48,53 +53,32 @@ export class WorkflowConfigPanel {
         launchService: LaunchService,
         nodeDiscoveryService: NodeDiscoveryService
     ) {
-        const column = vscode.ViewColumn.One;
+        const column = vscode.window.activeTextEditor
+            ? vscode.window.activeTextEditor.viewColumn
+            : undefined;
 
-        // If we already have a panel, show it
         if (WorkflowConfigPanel.currentPanel) {
             WorkflowConfigPanel.currentPanel._panel.reveal(column);
             return;
         }
 
-        // Otherwise, create a new panel
         const panel = vscode.window.createWebviewPanel(
             'ros2WorkflowConfig',
-            'ROS 2 Workflow Configuration',
-            column,
+            'ROS 2 Workflows',
+            column || vscode.ViewColumn.One,
             {
                 enableScripts: true,
-                retainContextWhenHidden: true,
-                localResourceRoots: [extensionUri]
+                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
             }
         );
 
-        WorkflowConfigPanel.currentPanel = new WorkflowConfigPanel(panel, extensionUri, onSave, launchService, nodeDiscoveryService);
-    }
-
-    public async sendAvailableItems() {
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        if (!workspaceRoot) {
-            return;
-        }
-
-        const nodes = await this.nodeDiscoveryService.findNodes(workspaceRoot);
-        const launchFiles = await this.launchService.findLaunchFiles(workspaceRoot);
-
-        this._panel.webview.postMessage({
-            command: 'loadItems',
-            nodes,
-            launchFiles
-        });
-    }
-
-    public sendCurrentConfig() {
-        const config = vscode.workspace.getConfiguration('ros2Toolkit');
-        const workflowConfig: WorkflowConfiguration = config.get('workflowSteps') || { workflows: [] };
-
-        this._panel.webview.postMessage({
-            command: 'loadConfig',
-            config: workflowConfig
-        });
+        WorkflowConfigPanel.currentPanel = new WorkflowConfigPanel(
+            panel,
+            extensionUri,
+            onSave,
+            launchService,
+            nodeDiscoveryService
+        );
     }
 
     public dispose() {
@@ -103,19 +87,64 @@ export class WorkflowConfigPanel {
         this._panel.dispose();
 
         while (this._disposables.length) {
-            const disposable = this._disposables.pop();
-            if (disposable) {
-                disposable.dispose();
+            const x = this._disposables.pop();
+            if (x) {
+                x.dispose();
             }
         }
     }
 
-    private _update() {
-        const webview = this._panel.webview;
-        this._panel.webview.html = this._getHtmlForWebview(webview);
+    private async sendConfig() {
+        // Get config from workspace settings using the same key as extension.ts
+        const config = vscode.workspace.getConfiguration('ros2Toolkit');
+        const workflowConfig = config.get('workflowSteps') as WorkflowConfiguration || { workflows: [] };
+
+        const nodes = await this.getAvailableNodes();
+        const launchFiles = await this.getAvailableLaunchFiles();
+
+        this._panel.webview.postMessage({
+            command: 'loadConfig',
+            config: workflowConfig,
+        });
+
+        this._panel.webview.postMessage({
+            command: 'loadItems',
+            nodes,
+            launchFiles
+        });
+    }
+
+    private async saveConfig(config: WorkflowConfiguration) {
+        this._onSave(config);
+        vscode.window.showInformationMessage('Workflow configuration saved!');
+    }
+
+    private async getAvailableNodes(): Promise<any[]> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return [];
+        }
+        return await this._nodeDiscoveryService.findNodes(workspaceFolder.uri.fsPath);
+    }
+
+    private async getAvailableLaunchFiles(): Promise<any[]> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return [];
+        }
+        return await this._launchService.findLaunchFiles(workspaceFolder.uri.fsPath);
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {
+        // Icons
+        const icons = {
+            save: `<svg class="icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M11 1H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5l-4-4zm3 12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h7.59L14 5.41V13zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-6V2H5v2h6z"/></svg>`,
+            link: `<svg class="icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-4H9c-.086 0-.17.01-.25.031A2 2 0 0 1 7 10.5H4a2 2 0 1 1 0-4h1.535c.218-.376.495-.714.82-1z"/><path d="M9 5.5a3 3 0 0 0-2.83 4h1.098A2 2 0 0 1 9 6.5h3a2 2 0 1 1 0 4h-1.535a4.02 4.02 0 0 1-.82 1H12a3 3 0 1 0 0-6H9z"/></svg>`,
+            trash: `<svg class="icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>`,
+            up: `<svg class="icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/></svg>`,
+            down: `<svg class="icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`
+        };
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -176,6 +205,9 @@ export class WorkflowConfigPanel {
             border-radius: 2px;
             cursor: pointer;
             font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         button:hover {
             background: var(--vscode-button-hoverBackground);
@@ -212,6 +244,9 @@ export class WorkflowConfigPanel {
             font-weight: bold;
             color: var(--vscode-textLink-foreground);
             min-width: 80px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .step-description {
             flex: 1;
@@ -243,6 +278,11 @@ export class WorkflowConfigPanel {
             max-width: 500px;
             width: 90%;
         }
+        .icon {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
     </style>
 </head>
 <body>
@@ -251,7 +291,7 @@ export class WorkflowConfigPanel {
         
         <div class="actions">
             <button onclick="addWorkflow()">+ New Workflow</button>
-            <button class="secondary" onclick="saveConfig()">💾 Save Configuration</button>
+            <button class="secondary" onclick="saveConfig()">${icons.save} Save Configuration</button>
         </div>
 
         <div id="workflowList" class="workflow-list"></div>
@@ -294,11 +334,22 @@ export class WorkflowConfigPanel {
                     <option value="source">Source Workspace</option>
                     <option value="launch">Launch File</option>
                     <option value="run">Run Node</option>
-                    <option value="script">Run Script</option>
+                    <option value="command">Run Command</option>
                     <option value="delay">Delay</option>
                 </select>
             </div>
             <div id="stepFormContainer"></div>
+            
+            <div class="form-group" style="margin-top: 15px; border-top: 1px solid var(--vscode-input-border); padding-top: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="stepSameTerminal">
+                    <span>Run in previous terminal</span>
+                </label>
+                <small style="color: var(--vscode-descriptionForeground); display: block; margin-top: 4px;">
+                    If checked, this command will run in the same terminal as the previous step.
+                </small>
+            </div>
+
             <div class="actions">
                 <button onclick="confirmAddStep()">Add Step</button>
                 <button class="secondary" onclick="closeModal()">Cancel</button>
@@ -332,8 +383,6 @@ export class WorkflowConfigPanel {
             }
         });
 
-        // ... [renderWorkflows, getStepDescription, addWorkflow, etc. remain same] ...
-
         function renderWorkflows() {
             const container = document.getElementById('workflowList');
             if (config.workflows.length === 0) {
@@ -346,19 +395,22 @@ export class WorkflowConfigPanel {
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h3>\${workflow.name}</h3>
                         <div>
-                            <button class="secondary" onclick="deleteWorkflow(\${index})">Delete</button>
+                            <button class="secondary" onclick="deleteWorkflow(\${index})">${icons.trash} Delete</button>
                         </div>
                     </div>
                     <div class="step-list">
                         \${workflow.steps.map((step, stepIndex) => \`
                             <div class="step-item \${!step.enabled ? 'disabled' : ''}">
                                 <input type="checkbox" \${step.enabled ? 'checked' : ''} onchange="toggleStep(\${index}, \${stepIndex})">
-                                <span class="step-type">\${step.type.toUpperCase()}</span>
+                                <span class="step-type">
+                                    \${step.type.toUpperCase()}
+                                    \${step.sameTerminal ? '<span title="Runs in previous terminal">${icons.link}</span>' : ''}
+                                </span>
                                 <span class="step-description">\${getStepDescription(step)}</span>
                                 <div class="step-controls">
-                                    <button class="secondary" onclick="moveStep(\${index}, \${stepIndex}, -1)" \${stepIndex === 0 ? 'disabled' : ''}>↑</button>
-                                    <button class="secondary" onclick="moveStep(\${index}, \${stepIndex}, 1)" \${stepIndex === workflow.steps.length - 1 ? 'disabled' : ''}>↓</button>
-                                    <button class="secondary" onclick="deleteStep(\${index}, \${stepIndex})">✕</button>
+                                    <button class="secondary" onclick="moveStep(\${index}, \${stepIndex}, -1)" \${stepIndex === 0 ? 'disabled' : ''}>${icons.up}</button>
+                                    <button class="secondary" onclick="moveStep(\${index}, \${stepIndex}, 1)" \${stepIndex === workflow.steps.length - 1 ? 'disabled' : ''}>${icons.down}</button>
+                                    <button class="secondary" onclick="deleteStep(\${index}, \${stepIndex})">${icons.trash}</button>
                                 </div>
                             </div>
                         \`).join('')}
@@ -376,8 +428,8 @@ export class WorkflowConfigPanel {
                     return \`\${step.config.package}/\${step.config.launchFile}\`;
                 case 'run':
                     return \`\${step.config.package}/\${step.config.nodeName}\`;
-                case 'script':
-                    return step.config.scriptPath || 'No script selected';
+                case 'command':
+                    return step.config.command || 'No command entered';
                 case 'delay':
                     return \`Wait \${step.config.delayMs || 1000}ms\`;
                 default:
@@ -432,6 +484,8 @@ export class WorkflowConfigPanel {
         function openAddStepModal(workflowIndex) {
             currentWorkflowIndex = workflowIndex;
             document.getElementById('addStepModal').classList.add('show');
+            // Reset checkbox
+            document.getElementById('stepSameTerminal').checked = false;
             updateStepForm();
         }
 
@@ -485,11 +539,11 @@ export class WorkflowConfigPanel {
                 \`;
             } else if (type === 'source') {
                 formHtml = '<p>This step will source the workspace setup.bash file.</p>';
-            } else if (type === 'script') {
+            } else if (type === 'command') {
                 formHtml = \`
                     <div class="form-group">
-                        <label>Script Path:</label>
-                        <input type="text" id="stepScriptPath" placeholder="/path/to/script.sh">
+                        <label>Command:</label>
+                        <input type="text" id="stepCommand" placeholder="e.g., echo 'Hello World'">
                     </div>
                 \`;
             } else if (type === 'delay') {
@@ -532,10 +586,13 @@ export class WorkflowConfigPanel {
 
         function confirmAddStep() {
             const type = document.getElementById('stepType').value;
+            const sameTerminal = document.getElementById('stepSameTerminal').checked;
+            
             const step = {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 type: type,
                 enabled: true,
+                sameTerminal: sameTerminal,
                 config: {}
             };
             
@@ -548,8 +605,8 @@ export class WorkflowConfigPanel {
                     step.config.package = document.getElementById('stepPackage').value;
                     step.config.nodeName = document.getElementById('stepNodeName').value;
                     break;
-                case 'script':
-                    step.config.scriptPath = document.getElementById('stepScriptPath').value;
+                case 'command':
+                    step.config.command = document.getElementById('stepCommand').value;
                     break;
                 case 'delay':
                     step.config.delayMs = parseInt(document.getElementById('stepDelayMs').value);
