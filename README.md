@@ -2,7 +2,23 @@
 
 A comprehensive VS Code extension for ROS 2 developers, providing workspace management, build automation, code generation, debugging, and real-time topic monitoring.
 
+> **If you find this extension useful, please consider giving it a star on GitHub! ⭐**
+
+<div align="center">
+
+[![GitHub stars](https://img.shields.io/github/stars/AshishRamesh/ros2-ws-extension?style=social)](https://github.com/AshishRamesh/ros2-ws-extension/stargazers)
+[![GitHub views](https://komarev.com/ghpvc/?username=AshishRamesh-ros2-ws-extension&label=Views&style=flat-square)](https://github.com/AshishRamesh/ros2-ws-extension)
+
+</div>
+
+
 ## Features
+
+### 🔄 ROS 2 Workflows (New!)
+- **Automated Sequences**: Chain together multiple tasks (launch files, nodes, commands, delays)
+- **Visual Editor**: Drag-and-drop interface to configure and reorder steps
+- **Terminal Reuse**: Run dependent steps in the same terminal to maintain context
+- **One-Click Execution**: Run complex startup sequences with a single click
 
 ### 🏗️ Workspace Management
 - **Build System Integration**: Execute `colcon build` with customizable options
@@ -53,7 +69,21 @@ A comprehensive VS Code extension for ROS 2 developers, providing workspace mana
 
 1. Open a ROS 2 workspace in VS Code
 2. Click the ROS 2 icon in the Activity Bar (left sidebar)
-3. Explore the four sections: Workspace, Run & Debug, ROS 2 Topics, and ROS 2 Bag
+3. Explore the sections: Workspace, Run & Debug, ROS 2 Topics, ROS 2 Bag, and Workflows
+
+### Automating with Workflows
+
+1. Expand "Workflows" section
+2. Click "Configure Workflows"
+3. Create a new workflow (e.g., "Full System Startup")
+4. Add steps:
+   - **Source**: Source your workspace
+   - **Launch**: Select package and launch file
+   - **Run**: Select package and node
+   - **Command**: Run any shell command
+   - **Delay**: Add wait time between steps
+5. Check "Run in previous terminal" to chain commands in one terminal
+6. Save and run from the sidebar!
 
 ### Building Your Workspace
 
@@ -115,7 +145,7 @@ A comprehensive VS Code extension for ROS 2 developers, providing workspace mana
 
 ## Requirements
 
-- VS Code 1.106.1 or higher
+- VS Code 1.104.0 or higher
 - ROS 2 (Humble, Iron, Jazzy, or Rolling)
 - colcon build tools
 - Node.js and npm (for development)
@@ -144,7 +174,7 @@ This extension is licensed under the MIT License.
 
 ## Support
 
-For issues, questions, or feature requests, please visit the [GitHub repository](https://github.com/your-repo/ros2-ws-extension).
+For issues, questions, or feature requests, please visit the [GitHub repository](https://github.com/AshishRamesh/ros2-ws-extension).
 
 ---
 
