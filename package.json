@@ -2,7 +2,7 @@
   "name": "ros2-ws-extension",
   "displayName": "ROS 2 Developer Tools",
   "description": "A comprehensive VS Code extension for ROS 2 developers with workspace management, build automation, and code generation",
-  "version": "0.2.0-alpha",
+  "version": "0.2.0",
   "publisher": "AshishRamesh",
   "license": "MIT",
   "repository": {
